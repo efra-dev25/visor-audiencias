@@ -31,19 +31,44 @@
   }
 
   .upload-box {
-    border: 2px dashed #93c5fd; background: #f8fafc; padding: 20px; border-radius: 8px;
-    text-align: center; margin: 12px 0; transition: background 0.2s, border-color 0.2s;
+    border: 2px dashed #93c5fd; background: #f8fafc; padding: 18px; border-radius: 8px;
+    text-align: center; margin: 10px 0 0 0; transition: background 0.2s, border-color 0.2s;
   }
   .upload-box.dragover { background: #dbeafe; border-color: #2563eb; }
-  
-  details { margin-top: 12px; font-size: 0.9rem; color: #475569; }
-  summary { cursor: pointer; font-weight: 600; color: #2563eb; }
-  textarea { width: 100%; height: 80px; margin: 8px 0; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-family: monospace; font-size: 0.85rem; box-sizing: border-box; }
-  input[type="text"] { width: 70%; padding: 8px; border: 1px solid #cbd5e1; border-radius: 6px; }
+
+  /* Sección Audiencias Agregadas */
+  .card-agregadas { border-left: 5px solid #0284c7; background: #f8fafc; }
+  .grid-agregada {
+    display: grid;
+    grid-template-columns: 140px 160px 180px 1fr 1fr;
+    gap: 12px;
+    align-items: end;
+    margin-top: 12px;
+  }
+  @media (max-width: 900px) {
+    .grid-agregada { grid-template-columns: 1fr 1fr; }
+  }
+  .campo-form label {
+    display: block; font-size: 0.82rem; font-weight: 700; color: #334155; margin-bottom: 4px;
+  }
+  .campo-form input[type="text"], .campo-form select {
+    width: 100%; padding: 8px 10px; border: 1px solid #cbd5e1; border-radius: 6px;
+    font-size: 0.92rem; box-sizing: border-box; background: white;
+  }
+  .fila-acciones-agregada {
+    display: flex; justify-content: space-between; align-items: center; margin-top: 12px; flex-wrap: wrap; gap: 10px;
+  }
+  .check-rpa {
+    display: flex; align-items: center; gap: 6px; font-size: 0.88rem; font-weight: 600; color: #0369a1; cursor: pointer;
+  }
+
+  .input-cintillo { width: 70%; padding: 8px; border: 1px solid #cbd5e1; border-radius: 6px; }
   
   button { padding: 10px 16px; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.95rem; display: inline-block; }
   .btn-blue { background: #2563eb; color: white; }
   .btn-blue:hover { background: #1d4ed8; }
+  .btn-teal { background: #0284c7; color: white; }
+  .btn-teal:hover { background: #0369a1; }
   .btn-red-outline { background: transparent; border: 1px solid rgba(255,255,255,0.5); color: white; padding: 6px 12px; font-size: 0.85rem; }
   .btn-green { background: #10b981; color: white; padding: 7px 12px; font-size: 0.88rem; }
   .btn-gray { background: #64748b; color: white; padding: 7px 12px; font-size: 0.88rem; }
@@ -60,6 +85,7 @@
   tr.fila-finalizada button { padding: 4px 8px; font-size: 0.78rem; }
 
   .badge-rpa { background: #e0f2fe; color: #0369a1; padding: 2px 6px; border-radius: 4px; font-weight: bold; font-size: 0.8rem; }
+  .badge-agregada { background: #fef3c7; color: #92400e; padding: 2px 6px; border-radius: 4px; font-weight: bold; font-size: 0.75rem; margin-left: 4px; }
   .badge-realizada { background: #cbd5e1; color: #334155; padding: 2px 7px; border-radius: 4px; font-weight: 700; font-size: 0.78rem; }
 </style>
 </head>
@@ -92,29 +118,67 @@
 
     <!-- PASO 1: SUBIDA DIRECTA DEL EXCEL -->
     <div class="card">
-      <h3>1. Subir Archivo Excel de UNIJUD</h3>
+      <h3 style="margin-top:0;">1. Cargar Programación Base desde Excel de UNIJUD</h3>
       <p style="font-size:0.9rem; color:#475569; margin-top:0;">
-        Selecciona o arrastra aquí el archivo íntegro exportado desde UNIJUD (ej. <code>Información agenda.xlsx</code>). Se publicará automáticamente en la pantalla del hall.
+        Selecciona o arrastra aquí el archivo íntegro exportado desde UNIJUD (ej. <code>Información agenda.xlsx</code>).
       </p>
 
       <div class="upload-box" id="drop-zone">
         <input type="file" id="input-excel" accept=".xlsx, .xls, .csv" style="display: none;">
         <button class="btn-blue" id="btn-select-excel">📄 Seleccionar Archivo Excel (.xlsx)</button>
-        <p style="margin: 10px 0 0 0; font-size: 0.88rem; color: #64748b;">O arrastra y suelta el archivo Excel directamente dentro de este recuadro</p>
+        <p style="margin: 8px 0 0 0; font-size: 0.88rem; color: #64748b;">O arrastra y suelta el archivo Excel directamente dentro de este recuadro</p>
       </div>
-
-      <details>
-        <summary>Opción alternativa: Copiar y pegar texto manualmente desde Excel</summary>
-        <textarea id="texto-unijud" placeholder="Pega aquí las filas copiadas desde Excel..."></textarea>
-        <button class="btn-blue" id="btn-pegar-texto">Procesar Texto Pegado</button>
-      </details>
     </div>
 
-    <!-- PASO 2: OPERACIÓN EN VIVO -->
+    <!-- PASO 2: AUDIENCIAS AGREGADAS MANUALMENTE -->
+    <div class="card card-agregadas">
+      <h3 style="margin-top:0; color:#0369a1;">2. Audiencias Agregadas (Ingreso Manual en la Jornada)</h3>
+      <p style="font-size:0.88rem; color:#475569; margin-top:0;">
+        Utiliza esta sección para incorporar causas no programadas originalmente (controles de detención o presentaciones voluntarias) sin borrar la agenda ya cargada.
+      </p>
+
+      <div class="grid-agregada">
+        <div class="campo-form">
+          <label for="add-hora">Hora</label>
+          <input type="text" id="add-hora" value="Por definir">
+        </div>
+        <div class="campo-form">
+          <label for="add-rit">Rol Interno (RIT)</label>
+          <input type="text" id="add-rit" placeholder="Ej: O-415-2026">
+        </div>
+        <div class="campo-form">
+          <label for="add-ruc">Rol Único (RUC)</label>
+          <input type="text" id="add-ruc" placeholder="Ej: 2600451234-5">
+        </div>
+        <div class="campo-form">
+          <label for="add-caratulado">Caratulado</label>
+          <input type="text" id="add-caratulado" placeholder="Ej: MP/PEREZ">
+        </div>
+        <div class="campo-form">
+          <label for="add-tipo">Tipo de Audiencia</label>
+          <select id="add-tipo">
+            <option value="Audiencia de control de detención">Audiencia de control de detención</option>
+            <option value="Audiencia de presentación voluntaria">Audiencia de presentación voluntaria</option>
+            <option value="OTRO">Otro tipo de audiencia...</option>
+          </select>
+          <input type="text" id="add-tipo-otro" placeholder="Especifique tipo de audiencia..." style="display:none; margin-top:6px;">
+        </div>
+      </div>
+
+      <div class="fila-acciones-agregada">
+        <label class="check-rpa">
+          <input type="checkbox" id="add-rpa">
+          Causa RPA (Anonimizar caratulado en pantalla y voz)
+        </label>
+        <button class="btn-teal" id="btn-agregar-audiencia">➕ Agregar a la Agenda en Vivo</button>
+      </div>
+    </div>
+
+    <!-- PASO 3: OPERACIÓN EN VIVO -->
     <div class="card">
-      <h3>2. Control en Vivo de Audiencias (<span id="contador-causas">0</span> causas | <span id="contador-realizadas" style="color:#64748b;">0 realizadas</span>)</h3>
+      <h3 style="margin-top:0;">3. Control en Vivo de Audiencias (<span id="contador-causas">0</span> causas | <span id="contador-realizadas" style="color:#64748b;">0 realizadas</span>)</h3>
       <div style="margin-bottom: 12px;">
-        <input type="text" id="input-cintillo" value="Bienvenido. Por favor mantenga su teléfono móvil en silencio antes de ingresar a sala.">
+        <input type="text" class="input-cintillo" id="input-cintillo" value="Bienvenido. Por favor mantenga su teléfono móvil en silencio antes de ingresar a sala.">
         <button class="btn-blue" id="btn-actualizar-aviso">Actualizar Aviso Inferior</button>
       </div>
 
@@ -210,6 +274,84 @@
   }
   mostrarFechaHoy();
 
+  // Lógica del formulario de Audiencias Agregadas
+  const selectTipo = document.getElementById('add-tipo');
+  const inputTipoOtro = document.getElementById('add-tipo-otro');
+  const checkRpa = document.getElementById('add-rpa');
+  const inputCaratulado = document.getElementById('add-caratulado');
+
+  selectTipo.addEventListener('change', () => {
+    inputTipoOtro.style.display = (selectTipo.value === 'OTRO') ? 'block' : 'none';
+  });
+
+  checkRpa.addEventListener('change', () => {
+    if (checkRpa.checked) {
+      inputCaratulado.value = 'Anonimizado RPA';
+      inputCaratulado.disabled = true;
+    } else {
+      inputCaratulado.value = '';
+      inputCaratulado.disabled = false;
+    }
+  });
+
+  document.getElementById('btn-agregar-audiencia').addEventListener('click', () => {
+    const horaVal = document.getElementById('add-hora').value.trim() || 'Por definir';
+    const ritVal = document.getElementById('add-rit').value.trim().toUpperCase();
+    const rucVal = document.getElementById('add-ruc').value.trim();
+    const esRPAVal = checkRpa.checked;
+    const caratuladoVal = esRPAVal ? 'Anonimizado RPA' : inputCaratulado.value.trim().toUpperCase();
+    const tipoVal = (selectTipo.value === 'OTRO') ? inputTipoOtro.value.trim() : selectTipo.value;
+
+    if (!ritVal || !caratuladoVal || !tipoVal) {
+      alert("Por favor completa al menos el Rol Interno (RIT), el Caratulado y el Tipo de Audiencia.");
+      return;
+    }
+
+    // Toma la sala de la agenda actual o asigna PRIMERA SALA por defecto
+    const salaAsignada = (audiencias.length > 0 && audiencias[0].sala) ? audiencias[0].sala : 'PRIMERA SALA';
+
+    const nuevaCausa = {
+      id: audiencias.length + 1,
+      hora: horaVal,
+      fecha: fechaAgendaActual,
+      ruc: rucVal || 'Sin RUC',
+      rit: ritVal,
+      caratulado: caratuladoVal,
+      esRPA: esRPAVal,
+      sala: salaAsignada,
+      tipo: tipoVal,
+      estado: 'programada',
+      esAgregada: true
+    };
+
+    audiencias.push(nuevaCausa);
+
+    // Si aún no había fecha registrada porque no se subió Excel, asigna hoy
+    if (fechaAgendaActual === "--") {
+      const hoy = new Date();
+      fechaAgendaActual = `${String(hoy.getDate()).padStart(2, '0')}/${String(hoy.getMonth() + 1).padStart(2, '0')}/${hoy.getFullYear()}`;
+      document.getElementById('info-fecha-agenda').textContent = fechaAgendaActual;
+      if (archivoActualInfo === "Ninguno") {
+        archivoActualInfo = "Ingreso manual en sala";
+        document.getElementById('info-archivo').textContent = archivoActualInfo;
+      }
+    }
+
+    guardarEnFirebase();
+
+    // Limpiar campos para el siguiente ingreso
+    document.getElementById('add-hora').value = 'Por definir';
+    document.getElementById('add-rit').value = '';
+    document.getElementById('add-ruc').value = '';
+    checkRpa.checked = false;
+    inputCaratulado.disabled = false;
+    inputCaratulado.value = '';
+    selectTipo.value = 'Audiencia de control de detención';
+    inputTipoOtro.style.display = 'none';
+    inputTipoOtro.value = '';
+  });
+
+  // Eventos de carga Excel
   const dropZone = document.getElementById('drop-zone');
   const inputExcel = document.getElementById('input-excel');
 
@@ -221,14 +363,6 @@
     e.preventDefault();
     dropZone.classList.remove('dragover');
     if (e.dataTransfer.files.length > 0) manejarArchivoExcel(e.dataTransfer.files[0]);
-  });
-
-  document.getElementById('btn-pegar-texto').addEventListener('click', () => {
-    const raw = document.getElementById('texto-unijud').value;
-    if (!raw.trim()) return;
-    const matriz = raw.split(/\r?\n/).map(linea => linea.split('\t'));
-    procesarMatrizDatos(matriz, "Pegado manual desde Excel");
-    document.getElementById('texto-unijud').value = '';
   });
 
   document.getElementById('btn-actualizar-aviso').addEventListener('click', guardarEnFirebase);
@@ -283,7 +417,7 @@
 
       nuevasAudiencias.push({
         id: nuevasAudiencias.length + 1,
-        hora, fecha: fechaCol, ruc, rit, caratulado, esRPA, sala, tipo, estado: 'programada'
+        hora, fecha: fechaCol, ruc, rit, caratulado, esRPA, sala, tipo, estado: 'programada', esAgregada: false
       });
     });
 
@@ -365,10 +499,12 @@
         textoEstado = `<span class="badge-realizada">✔ REALIZADA</span>`;
       }
 
+      const etiquetaAgregada = a.esAgregada ? '<span class="badge-agregada">AGREGADA</span>' : '';
+
       return `
         <tr class="${claseFila}">
           <td><strong>${a.hora}</strong></td>
-          <td><strong>${a.rit}</strong><br><small style="color:#64748b">${a.ruc}</small></td>
+          <td><strong>${a.rit}</strong>${etiquetaAgregada}<br><small style="color:#64748b">${a.ruc}</small></td>
           <td>${a.esRPA ? '<span class="badge-rpa">Anonimizado RPA</span>' : a.caratulado}</td>
           <td>${a.tipo}</td>
           <td>${textoEstado}</td>
