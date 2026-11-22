@@ -239,30 +239,44 @@
   }
 
   function formatearCaratulaParaVoz(audiencia) {
-    if (audiencia.esRPA || /anonimizado\s*rpa/i.test(audiencia.caratulado || '')) {
+    const rawCaratula = String(audiencia.caratulado || '').trim();
+    const esCausaRPA = Boolean(audiencia.esRPA) || /anonimizado/i.test(rawCaratula) || /\brpa\b/i.test(rawCaratula);
+    if (esCausaRPA) {
       return 'Causa anonimizada por privacidad de datos de persona menor de edad';
     }
-    let texto = (audiencia.caratulado || '').trim();
+    let texto = rawCaratula;
     texto = texto.replace(/^MP(?=\s|\/|$)/i, 'Ministerio Público');
     texto = texto.replace(/\s+C\/\s*/gi, ' contra ');
     texto = texto.replace(/\s*\/\s*/g, ' contra ');
     return `Carátula: ${texto.replace(/\s+/g, ' ').toLowerCase()}`;
   }
 
+  function sanitizarTextoFinalVoz(texto) {
+    return texto
+      .replace(/anonimizado\s*rpa/gi, 'Causa anonimizada por privacidad de datos de persona menor de edad')
+      .replace(/\bR\.?\s*P\.?\s*A\.?\b/gi, 'Causa anonimizada por privacidad de datos de persona menor de edad');
+  }
+
   function hablarTexto(mensaje, alFinalizarCallback = null) {
     if (!audioHabilitado || !('speechSynthesis' in window)) return;
     try {
-      const locucion = new SpeechSynthesisUtterance(mensaje);
+      const textoLimpio = sanitizarTextoFinalVoz(mensaje);
+      const locucion = new SpeechSynthesisUtterance(textoLimpio);
       locucion.lang = 'es-CL';
       locucion.rate = 0.90;
       locucion.pitch = 1.0;
       locucion.volume = 1.0;
 
       const voces = window.speechSynthesis.getVoices();
-      const vozMasculina = voces.find(v =>
-        v.lang.startsWith('es') && /Lorenzo|Alonso|Álvaro|Alvaro|Jorge|Pablo|Raúl|Raul|Antonio|Male/i.test(v.name)
+      const vozFemenina = voces.find(v =>
+        v.lang.startsWith('es') &&
+        /Catalina|Sabina|Helena|Laura|Paloma|Camila|Ximena|Dalia|Elvira|Sofía|Sofia|Mónica|Monica|Paulina|Google español|Female/i.test(v.name) &&
+        !/Lorenzo|Alonso|Álvaro|Alvaro|Jorge|Pablo|Raúl|Raul|Antonio|Male/i.test(v.name)
       );
-      const vozEspanol = vozMasculina || voces.find(v => v.lang === 'es-CL') || voces.find(v => v.lang.startsWith('es'));
+      const vozEspanol = vozFemenina ||
+                         voces.find(v => v.lang === 'es-CL' && !/Lorenzo/i.test(v.name)) ||
+                         voces.find(v => v.lang.startsWith('es') && !/Lorenzo|Alonso|Álvaro|Alvaro|Jorge|Pablo|Raúl|Raul|Antonio|Male/i.test(v.name)) ||
+                         voces.find(v => v.lang.startsWith('es'));
       if (vozEspanol) locucion.voice = vozEspanol;
 
       if (alFinalizarCallback) locucion.onend = alFinalizarCallback;
