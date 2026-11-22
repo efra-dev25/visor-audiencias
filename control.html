@@ -5,7 +5,7 @@
 <title>Panel Control Sala - UNIJUD Cloud</title>
 <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
 <style>
-  body { font-family: 'Segoe UI', system-ui, sans-serif; background: #f1f5f9; color: #0f172a; padding: 20px; max-width: 1150px; margin: auto; }
+  body { font-family: 'Segoe UI', system-ui, sans-serif; background: #f1f5f9; color: #0f172a; padding: 20px; max-width: 1220px; margin: auto; }
   .card { background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); margin-bottom: 18px; }
   
   /* Pantalla de Login */
@@ -62,6 +62,9 @@
     display: flex; align-items: center; gap: 6px; font-size: 0.88rem; font-weight: 600; color: #0369a1; cursor: pointer;
   }
 
+  .barra-titulo-agenda {
+    display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 12px;
+  }
   .input-cintillo { width: 70%; padding: 8px; border: 1px solid #cbd5e1; border-radius: 6px; }
   
   button { padding: 10px 16px; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.95rem; display: inline-block; }
@@ -69,10 +72,12 @@
   .btn-blue:hover { background: #1d4ed8; }
   .btn-teal { background: #0284c7; color: white; }
   .btn-teal:hover { background: #0369a1; }
+  .btn-red { background: #dc2626; color: white; padding: 7px 11px; font-size: 0.85rem; }
+  .btn-red:hover { background: #b91c1c; }
   .btn-red-outline { background: transparent; border: 1px solid rgba(255,255,255,0.5); color: white; padding: 6px 12px; font-size: 0.85rem; }
-  .btn-green { background: #10b981; color: white; padding: 7px 12px; font-size: 0.88rem; }
-  .btn-gray { background: #64748b; color: white; padding: 7px 12px; font-size: 0.88rem; }
-  .btn-amber { background: #f59e0b; color: white; padding: 7px 12px; font-size: 0.88rem; }
+  .btn-green { background: #10b981; color: white; padding: 7px 11px; font-size: 0.85rem; }
+  .btn-gray { background: #64748b; color: white; padding: 7px 11px; font-size: 0.85rem; }
+  .btn-amber { background: #f59e0b; color: white; padding: 7px 11px; font-size: 0.85rem; }
 
   table { width: 100%; border-collapse: collapse; margin-top: 12px; font-size: 0.95rem; }
   th, td { padding: 10px; border-bottom: 1px solid #e2e8f0; text-align: left; transition: all 0.2s ease; }
@@ -84,9 +89,15 @@
   tr.fila-finalizada small, tr.fila-finalizada .btn-gray { display: none; }
   tr.fila-finalizada button { padding: 4px 8px; font-size: 0.78rem; }
 
+  tr.fila-sin-efecto { background-color: #fee2e2; color: #991b1b; font-size: 0.82rem; border-left: 5px solid #ef4444; text-decoration: line-through; }
+  tr.fila-sin-efecto td { padding: 5px 10px; border-bottom: 1px solid #fecaca; }
+  tr.fila-sin-efecto small, tr.fila-sin-efecto .btn-red, tr.fila-sin-efecto .btn-gray, tr.fila-sin-efecto .btn-green { display: none; }
+  tr.fila-sin-efecto button { padding: 4px 8px; font-size: 0.78rem; text-decoration: none; }
+
   .badge-rpa { background: #e0f2fe; color: #0369a1; padding: 2px 6px; border-radius: 4px; font-weight: bold; font-size: 0.8rem; }
   .badge-agregada { background: #fef3c7; color: #92400e; padding: 2px 6px; border-radius: 4px; font-weight: bold; font-size: 0.75rem; margin-left: 4px; }
   .badge-realizada { background: #cbd5e1; color: #334155; padding: 2px 7px; border-radius: 4px; font-weight: 700; font-size: 0.78rem; }
+  .badge-sin-efecto { background: #fecaca; color: #991b1b; padding: 2px 7px; border-radius: 4px; font-weight: 700; font-size: 0.78rem; display: inline-block; text-decoration: none; }
 </style>
 </head>
 <body>
@@ -176,7 +187,11 @@
 
     <!-- PASO 3: OPERACIÓN EN VIVO -->
     <div class="card">
-      <h3 style="margin-top:0;">3. Control en Vivo de Audiencias (<span id="contador-causas">0</span> causas | <span id="contador-realizadas" style="color:#64748b;">0 realizadas</span>)</h3>
+      <div class="barra-titulo-agenda">
+        <h3 style="margin:0;">3. Control en Vivo de Audiencias (<span id="contador-causas">0</span> causas | <span id="contador-realizadas" style="color:#64748b;">0 realizadas</span>)</h3>
+        <button class="btn-red" id="btn-limpiar-agenda">🗑️ Eliminar Programación Completa</button>
+      </div>
+
       <div style="margin-bottom: 12px;">
         <input type="text" class="input-cintillo" id="input-cintillo" value="Bienvenido. Por favor mantenga su teléfono móvil en silencio antes de ingresar a sala.">
         <button class="btn-blue" id="btn-actualizar-aviso">Actualizar Aviso Inferior</button>
@@ -190,7 +205,7 @@
             <th>Caratulado</th>
             <th>Tipo de Audiencia</th>
             <th>Estado</th>
-            <th style="width: 265px;">Acción en Pantalla</th>
+            <th style="width: 345px;">Acción en Pantalla</th>
           </tr>
         </thead>
         <tbody id="tabla-control"></tbody>
@@ -274,6 +289,21 @@
   }
   mostrarFechaHoy();
 
+  // Botón para eliminar toda la programación del día
+  document.getElementById('btn-limpiar-agenda').addEventListener('click', () => {
+    if (audiencias.length === 0) return;
+    const confirmar = confirm("¿Estás seguro de eliminar toda la programación cargada? La pantalla del hall quedará en blanco hasta que subas un nuevo archivo.");
+    if (!confirmar) return;
+
+    audiencias = [];
+    archivoActualInfo = "Ninguno";
+    fechaAgendaActual = "--";
+    document.getElementById('info-archivo').textContent = archivoActualInfo;
+    document.getElementById('info-fecha-agenda').textContent = fechaAgendaActual;
+    document.getElementById('alerta-fecha-distinta').style.display = 'none';
+    guardarEnFirebase();
+  });
+
   // Lógica del formulario de Audiencias Agregadas
   const selectTipo = document.getElementById('add-tipo');
   const inputTipoOtro = document.getElementById('add-tipo-otro');
@@ -307,7 +337,6 @@
       return;
     }
 
-    // Toma la sala de la agenda actual o asigna PRIMERA SALA por defecto
     const salaAsignada = (audiencias.length > 0 && audiencias[0].sala) ? audiencias[0].sala : 'PRIMERA SALA';
 
     const nuevaCausa = {
@@ -326,7 +355,6 @@
 
     audiencias.push(nuevaCausa);
 
-    // Si aún no había fecha registrada porque no se subió Excel, asigna hoy
     if (fechaAgendaActual === "--") {
       const hoy = new Date();
       fechaAgendaActual = `${String(hoy.getDate()).padStart(2, '0')}/${String(hoy.getMonth() + 1).padStart(2, '0')}/${hoy.getFullYear()}`;
@@ -339,7 +367,6 @@
 
     guardarEnFirebase();
 
-    // Limpiar campos para el siguiente ingreso
     document.getElementById('add-hora').value = 'Por definir';
     document.getElementById('add-rit').value = '';
     document.getElementById('add-ruc').value = '';
@@ -482,8 +509,9 @@
   };
 
   function renderizarTabla() {
-    const realizadas = audiencias.filter(a => a.estado === 'finalizada').length;
-    document.getElementById('contador-causas').textContent = audiencias.length;
+    const validas = audiencias.filter(a => a.estado !== 'sin_efecto');
+    const realizadas = validas.filter(a => a.estado === 'finalizada').length;
+    document.getElementById('contador-causas').textContent = validas.length;
     document.getElementById('contador-realizadas').textContent = `${realizadas} realizadas`;
 
     const tbody = document.getElementById('tabla-control');
@@ -497,6 +525,9 @@
       } else if (a.estado === 'finalizada') {
         claseFila = 'fila-finalizada';
         textoEstado = `<span class="badge-realizada">✔ REALIZADA</span>`;
+      } else if (a.estado === 'sin_efecto') {
+        claseFila = 'fila-sin-efecto';
+        textoEstado = `<span class="badge-sin-efecto">✖ SIN EFECTO</span>`;
       }
 
       const etiquetaAgregada = a.esAgregada ? '<span class="badge-agregada">AGREGADA</span>' : '';
@@ -512,6 +543,7 @@
             <button class="btn-green" onclick="cambiarEstado(${a.id}, 'curso')">▶ Llamar</button>
             <button class="btn-gray" onclick="cambiarEstado(${a.id}, 'finalizada')">✔ Finalizar</button>
             <button class="btn-amber" onclick="cambiarEstado(${a.id}, 'programada')">↺ Espera</button>
+            <button class="btn-red" onclick="cambiarEstado(${a.id}, 'sin_efecto')">✖ Sin efecto</button>
           </td>
         </tr>
       `;
