@@ -11,6 +11,7 @@
     --text-muted: #94a3b8;
     --verde: #10b981;
     --amarillo: #f59e0b;
+    --rojo: #ef4444;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', system-ui, sans-serif; }
   body { background: var(--bg-main); color: var(--text-main); height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
@@ -72,16 +73,17 @@
   th { color: var(--text-muted); padding: 0.9rem 1.2rem; font-size: 0.95rem; text-transform: uppercase; }
   td { padding: 0.95rem 1.2rem; border-bottom: 1px solid #334155; font-size: 1.25rem; vertical-align: middle; word-wrap: break-word; }
 
-  .col-hora { width: 100px; }
+  .col-hora { width: 120px; }
   .col-rit { width: 200px; }
   .col-caratulado { width: 28%; }
   .col-tipo { width: auto; }
-  .col-estado { width: 160px; }
+  .col-estado { width: 165px; }
 
   #tabla-movil { will-change: transform; }
   
   tr.curso { background: rgba(16, 185, 129, 0.2); font-weight: 700; }
   tr.finalizada { opacity: 0.38; }
+  tr.sin_efecto { opacity: 0.35; text-decoration: line-through; background: rgba(239, 68, 68, 0.08); }
 
   .ruc-sub { display: block; font-size: 0.95rem; color: var(--text-muted); font-weight: 400; }
   .tag-rpa { color: #38bdf8; font-style: italic; font-weight: 600; }
@@ -90,6 +92,7 @@
   .pill-curso { background: var(--verde); color: #020617; }
   .pill-programada { background: rgba(245, 158, 11, 0.2); color: var(--amarillo); border: 1px solid var(--amarillo); }
   .pill-finalizada { background: #334155; color: #cbd5e1; }
+  .pill-sin-efecto { background: rgba(239, 68, 68, 0.2); color: #fca5a5; border: 1px solid var(--rojo); text-decoration: none; display: inline-block; }
 
   footer {
     background: #1e3a8a; color: #fff; padding: 0.85rem 2.2rem; font-size: 1.25rem; font-weight: 500;
@@ -224,7 +227,7 @@
 
   function formatearRucParaVoz(rucRaw) {
     const limpio = (rucRaw || '').trim();
-    if (!limpio) return '';
+    if (!limpio || limpio.toLowerCase() === 'sin ruc') return '';
     const partes = limpio.split('-');
     const cuerpo = partes[0].replace(/\D/g, '');
     const dv = partes[1] ? partes[1].trim() : '';
@@ -235,12 +238,15 @@
     return resultado;
   }
 
-  function formatearCaratulaParaVoz(caratulaRaw) {
-    let texto = (caratulaRaw || '').trim();
+  function formatearCaratulaParaVoz(audiencia) {
+    if (audiencia.esRPA || /anonimizado\s*rpa/i.test(audiencia.caratulado || '')) {
+      return 'Causa anonimizada por privacidad de datos de persona menor de edad';
+    }
+    let texto = (audiencia.caratulado || '').trim();
     texto = texto.replace(/^MP(?=\s|\/|$)/i, 'Ministerio Público');
     texto = texto.replace(/\s+C\/\s*/gi, ' contra ');
     texto = texto.replace(/\s*\/\s*/g, ' contra ');
-    return texto.replace(/\s+/g, ' ').toLowerCase();
+    return `Carátula: ${texto.replace(/\s+/g, ' ').toLowerCase()}`;
   }
 
   function hablarTexto(mensaje, alFinalizarCallback = null) {
@@ -273,15 +279,16 @@
 
     const ritHablado = formatearRitParaVoz(audiencia.rit);
     const rucHablado = formatearRucParaVoz(audiencia.ruc);
-    const caratulaHablada = formatearCaratulaParaVoz(audiencia.caratulado);
+    const bloqueRuc = rucHablado ? ` ${rucHablado}.` : '';
+    const caratulaHablada = formatearCaratulaParaVoz(audiencia);
     const salaTexto = audiencia.sala ? `a ${audiencia.sala}` : 'a sala';
 
-    const mensajeLlamado = `Atención. Llamado ${salaTexto}. Causa ${ritHablado}. ${rucHablado}. Carátula: ${caratulaHablada}. ${audiencia.tipo}.`;
+    const mensajeLlamado = `Atención. Llamado ${salaTexto}. Causa ${ritHablado}.${bloqueRuc} ${caratulaHablada}. ${audiencia.tipo}.`;
 
     temporizadorTimbre = setTimeout(() => {
       hablarTexto(mensajeLlamado, () => {
         temporizadorRepeticion = setTimeout(() => {
-          hablarTexto(`Repito llamado ${salaTexto}. Causa ${ritHablado}. ${rucHablado}. Carátula: ${caratulaHablada}. ${audiencia.tipo}.`);
+          hablarTexto(`Repito llamado ${salaTexto}. Causa ${ritHablado}.${bloqueRuc} ${caratulaHablada}. ${audiencia.tipo}.`);
         }, 1500);
       });
     }, 1300);
@@ -301,8 +308,14 @@
   onValue(refAgenda, (snapshot) => {
     document.getElementById('indicador-nube').textContent = "🟢 En línea";
     const datos = snapshot.val();
-    if (!datos) {
-      document.getElementById('contador-dia').textContent = "Sin programación cargada aún";
+    if (!datos || !datos.audiencias || datos.audiencias.length === 0) {
+      ultimoRitActivo = null;
+      document.getElementById('contador-dia').textContent = "Sin programación cargada";
+      document.getElementById('act-rit-ruc').textContent = "ESPERANDO INICIO DE AUDIENCIA";
+      document.getElementById('act-caratulado').textContent = "";
+      document.getElementById('act-tipo').textContent = "Atento al llamado por pantalla";
+      document.getElementById('act-sala').textContent = "--";
+      document.getElementById('tabla-body').innerHTML = "";
       return;
     }
 
@@ -310,8 +323,9 @@
     document.getElementById('cintillo').textContent = datos.mensaje || '';
 
     const lista = datos.audiencias || [];
-    const total = lista.length;
-    const realizadas = lista.filter(a => a.estado === 'finalizada').length;
+    const activas = lista.filter(a => a.estado !== 'sin_efecto');
+    const total = activas.length;
+    const realizadas = activas.filter(a => a.estado === 'finalizada').length;
     document.getElementById('contador-dia').textContent = total === 1 
       ? `1 audiencia programada para hoy (${realizadas} realizada)` 
       : `${total} audiencias programadas para hoy (${realizadas} realizadas)`;
@@ -340,6 +354,7 @@
       let pill = '<span class="pill pill-programada">Programada</span>';
       if (a.estado === 'curso') pill = '<span class="pill pill-curso">EN SALA</span>';
       if (a.estado === 'finalizada') pill = '<span class="pill pill-finalizada">Finalizada</span>';
+      if (a.estado === 'sin_efecto') pill = '<span class="pill pill-sin-efecto">Sin efecto</span>';
       const claseCaratulado = a.esRPA ? 'tag-rpa' : '';
 
       return `
