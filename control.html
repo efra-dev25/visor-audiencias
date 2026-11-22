@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Panel Control Sala - UNIJUD Cloud</title>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
+<style>
+  body { font-family: 'Segoe UI', system-ui, sans-serif; background: #f1f5f9; color: #0f172a; padding: 20px; max-width: 1150px; margin: auto; }
+  .card { background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); margin-bottom: 18px; }
+  
+  /* Pantalla de Login */
+  #login-box { max-width: 420px; margin: 70px auto; text-align: center; }
+  #login-box input { width: 100%; padding: 11px; margin: 8px 0; border: 1px solid #cbd5e1; border-radius: 6px; box-sizing: border-box; font-size: 0.95rem; }
+  #panel-principal { display: none; }
+
+  .header-panel {
+    display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;
+    background: #1e3a8a; color: white; padding: 16px 22px; border-radius: 10px; margin-bottom: 18px;
+    box-shadow: 0 2px 8px rgba(30, 58, 138, 0.2);
+  }
+  .header-panel h2 { margin: 0; font-size: 1.35rem; color: #ffffff; }
+  .info-trabajo { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+  .dato-badge {
+    background: rgba(255, 255, 255, 0.14); border: 1px solid rgba(255, 255, 255, 0.28);
+    padding: 6px 12px; border-radius: 6px; font-size: 0.9rem;
+  }
+  .dato-badge strong { color: #93c5fd; }
+  .alerta-fecha {
+    background: #fef3c7; color: #92400e; border: 1px solid #f59e0b;
+    padding: 4px 10px; border-radius: 6px; font-size: 0.85rem; font-weight: 700; display: none;
+  }
+
+  .upload-box {
+    border: 2px dashed #93c5fd; background: #f8fafc; padding: 20px; border-radius: 8px;
+    text-align: center; margin: 12px 0; transition: background 0.2s, border-color 0.2s;
+  }
+  .upload-box.dragover { background: #dbeafe; border-color: #2563eb; }
+  
+  details { margin-top: 12px; font-size: 0.9rem; color: #475569; }
+  summary { cursor: pointer; font-weight: 600; color: #2563eb; }
+  textarea { width: 100%; height: 80px; margin: 8px 0; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-family: monospace; font-size: 0.85rem; box-sizing: border-box; }
+  input[type="text"] { width: 70%; padding: 8px; border: 1px solid #cbd5e1; border-radius: 6px; }
+  
+  button { padding: 10px 16px; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.95rem; display: inline-block; }
+  .btn-blue { background: #2563eb; color: white; }
+  .btn-blue:hover { background: #1d4ed8; }
+  .btn-red-outline { background: transparent; border: 1px solid rgba(255,255,255,0.5); color: white; padding: 6px 12px; font-size: 0.85rem; }
+  .btn-green { background: #10b981; color: white; padding: 7px 12px; font-size: 0.88rem; }
+  .btn-gray { background: #64748b; color: white; padding: 7px 12px; font-size: 0.88rem; }
+  .btn-amber { background: #f59e0b; color: white; padding: 7px 12px; font-size: 0.88rem; }
+
+  table { width: 100%; border-collapse: collapse; margin-top: 12px; font-size: 0.95rem; }
+  th, td { padding: 10px; border-bottom: 1px solid #e2e8f0; text-align: left; transition: all 0.2s ease; }
+  th { background: #f8fafc; color: #475569; }
+
+  tr.fila-curso { background: #dcfce7; border-left: 5px solid #10b981; }
+  tr.fila-finalizada { background-color: #e2e8f0; color: #64748b; font-size: 0.82rem; border-left: 5px solid #94a3b8; }
+  tr.fila-finalizada td { padding: 5px 10px; border-bottom: 1px solid #cbd5e1; }
+  tr.fila-finalizada small, tr.fila-finalizada .btn-gray { display: none; }
+  tr.fila-finalizada button { padding: 4px 8px; font-size: 0.78rem; }
+
+  .badge-rpa { background: #e0f2fe; color: #0369a1; padding: 2px 6px; border-radius: 4px; font-weight: bold; font-size: 0.8rem; }
+  .badge-realizada { background: #cbd5e1; color: #334155; padding: 2px 7px; border-radius: 4px; font-weight: 700; font-size: 0.78rem; }
+</style>
+</head>
+<body>
+
+  <!-- CAJA DE INICIO DE SESIÓN -->
+  <div class="card" id="login-box">
+    <h2 style="color:#1e3a8a; margin-top:0;">Control de Sala - Acceso</h2>
+    <p style="font-size:0.9rem; color:#475569;">Ingresa tus credenciales de encargado de sala para actualizar el visor del hall.</p>
+    <input type="email" id="login-email" placeholder="Correo institucional">
+    <input type="password" id="login-pass" placeholder="Contraseña">
+    <button class="btn-blue" style="width:100%; margin-top:10px;" id="btn-login">Ingresar al Panel</button>
+    <p id="login-error" style="color:#dc2626; font-size:0.85rem; margin-top:10px;"></p>
+  </div>
+
+  <!-- PANEL PRINCIPAL -->
+  <div id="panel-principal">
+    <div class="header-panel">
+      <div>
+        <h2>Control de Audiencias - Juzgado de Garantía de Illapel</h2>
+        <div style="font-size: 0.85rem; color: #bfdbfe; margin-top: 3px;" id="fecha-sistema">Fecha actual del equipo: --</div>
+      </div>
+      <div class="info-trabajo">
+        <div class="dato-badge"><strong>📂 Archivo:</strong> <span id="info-archivo">Ninguno</span></div>
+        <div class="dato-badge"><strong>📅 Agenda:</strong> <span id="info-fecha-agenda">--</span></div>
+        <div class="alerta-fecha" id="alerta-fecha-distinta">⚠️ Fecha distinta a hoy</div>
+        <button class="btn-red-outline" id="btn-logout">Cerrar Sesión</button>
+      </div>
+    </div>
+
+    <!-- PASO 1: SUBIDA DIRECTA DEL EXCEL -->
+    <div class="card">
+      <h3>1. Subir Archivo Excel de UNIJUD</h3>
+      <p style="font-size:0.9rem; color:#475569; margin-top:0;">
+        Selecciona o arrastra aquí el archivo íntegro exportado desde UNIJUD (ej. <code>Información agenda.xlsx</code>). Se publicará automáticamente en la pantalla del hall.
+      </p>
+
+      <div class="upload-box" id="drop-zone">
+        <input type="file" id="input-excel" accept=".xlsx, .xls, .csv" style="display: none;">
+        <button class="btn-blue" id="btn-select-excel">📄 Seleccionar Archivo Excel (.xlsx)</button>
+        <p style="margin: 10px 0 0 0; font-size: 0.88rem; color: #64748b;">O arrastra y suelta el archivo Excel directamente dentro de este recuadro</p>
+      </div>
+
+      <details>
+        <summary>Opción alternativa: Copiar y pegar texto manualmente desde Excel</summary>
+        <textarea id="texto-unijud" placeholder="Pega aquí las filas copiadas desde Excel..."></textarea>
+        <button class="btn-blue" id="btn-pegar-texto">Procesar Texto Pegado</button>
+      </details>
+    </div>
+
+    <!-- PASO 2: OPERACIÓN EN VIVO -->
+    <div class="card">
+      <h3>2. Control en Vivo de Audiencias (<span id="contador-causas">0</span> causas | <span id="contador-realizadas" style="color:#64748b;">0 realizadas</span>)</h3>
+      <div style="margin-bottom: 12px;">
+        <input type="text" id="input-cintillo" value="Bienvenido. Por favor mantenga su teléfono móvil en silencio antes de ingresar a sala.">
+        <button class="btn-blue" id="btn-actualizar-aviso">Actualizar Aviso Inferior</button>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Hora</th>
+            <th>RIT / RUC</th>
+            <th>Caratulado</th>
+            <th>Tipo de Audiencia</th>
+            <th>Estado</th>
+            <th style="width: 265px;">Acción en Pantalla</th>
+          </tr>
+        </thead>
+        <tbody id="tabla-control"></tbody>
+      </table>
+    </div>
+  </div>
+
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+  import { getDatabase, ref, set, get } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+  import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyB37NriUgXk-jPJHvo34rFiVnJB491YK6k",
+    authDomain: "visor-jg-illapel.firebaseapp.com",
+    databaseURL: "https://visor-jg-illapel-default-rtdb.firebaseio.com",
+    projectId: "visor-jg-illapel",
+    storageBucket: "visor-jg-illapel.firebasestorage.app",
+    messagingSenderId: "357286194997",
+    appId: "1:357286194997:web:b8e3cfd4a34983d93b667c",
+    measurementId: "G-77PBVJHLF9"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getDatabase(app);
+  const auth = getAuth(app);
+  const refAgenda = ref(db, 'tribunal_illapel/agenda_actual');
+
+  let audiencias = [];
+  let nombreTribunal = "JUZGADO DE GARANTÍA DE ILLAPEL";
+  let archivoActualInfo = "Ninguno";
+  let fechaAgendaActual = "--";
+
+  onAuthStateChanged(auth, async (user) => {
+    if (user) {
+      document.getElementById('login-box').style.display = 'none';
+      document.getElementById('panel-principal').style.display = 'block';
+      await cargarEstadoPrevioNube();
+    } else {
+      document.getElementById('login-box').style.display = 'block';
+      document.getElementById('panel-principal').style.display = 'none';
+    }
+  });
+
+  document.getElementById('btn-login').addEventListener('click', async () => {
+    const email = document.getElementById('login-email').value.trim();
+    const pass = document.getElementById('login-pass').value;
+    document.getElementById('login-error').textContent = "Verificando...";
+    try {
+      await signInWithEmailAndPassword(auth, email, pass);
+      document.getElementById('login-error').textContent = "";
+    } catch (e) {
+      document.getElementById('login-error').textContent = "Correo o contraseña incorrectos.";
+    }
+  });
+
+  document.getElementById('btn-logout').addEventListener('click', () => signOut(auth));
+
+  async function cargarEstadoPrevioNube() {
+    try {
+      const snap = await get(refAgenda);
+      if (snap.exists()) {
+        const data = snap.val();
+        audiencias = data.audiencias || [];
+        nombreTribunal = data.tribunal || nombreTribunal;
+        archivoActualInfo = data.archivoOrigen || "Recuperado de la nube";
+        fechaAgendaActual = data.fechaAgenda || "--";
+        if (data.mensaje) document.getElementById('input-cintillo').value = data.mensaje;
+
+        document.getElementById('info-archivo').textContent = archivoActualInfo;
+        document.getElementById('info-fecha-agenda').textContent = fechaAgendaActual;
+        verificarCoincidenciaFecha(fechaAgendaActual);
+        renderizarTabla();
+      }
+    } catch (e) { console.error(e); }
+  }
+
+  function mostrarFechaHoy() {
+    const hoy = new Date();
+    document.getElementById('fecha-sistema').textContent = `Fecha actual del equipo: ${hoy.toLocaleDateString('es-CL', { weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric' })}`;
+  }
+  mostrarFechaHoy();
+
+  const dropZone = document.getElementById('drop-zone');
+  const inputExcel = document.getElementById('input-excel');
+
+  document.getElementById('btn-select-excel').addEventListener('click', () => inputExcel.click());
+  inputExcel.addEventListener('change', (e) => manejarArchivoExcel(e.target.files[0]));
+  dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('dragover'); });
+  dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+  dropZone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    dropZone.classList.remove('dragover');
+    if (e.dataTransfer.files.length > 0) manejarArchivoExcel(e.dataTransfer.files[0]);
+  });
+
+  document.getElementById('btn-pegar-texto').addEventListener('click', () => {
+    const raw = document.getElementById('texto-unijud').value;
+    if (!raw.trim()) return;
+    const matriz = raw.split(/\r?\n/).map(linea => linea.split('\t'));
+    procesarMatrizDatos(matriz, "Pegado manual desde Excel");
+    document.getElementById('texto-unijud').value = '';
+  });
+
+  document.getElementById('btn-actualizar-aviso').addEventListener('click', guardarEnFirebase);
+
+  function manejarArchivoExcel(archivo) {
+    if (!archivo) return;
+    const lector = new FileReader();
+    lector.onload = function(e) {
+      try {
+        const datos = new Uint8Array(e.target.result);
+        const libro = XLSX.read(datos, { type: 'array' });
+        const nombreHoja = libro.SheetNames.includes('Informe') ? 'Informe' : libro.SheetNames[0];
+        const hoja = libro.Sheets[nombreHoja];
+        const matrizFilas = XLSX.utils.sheet_to_json(hoja, { header: 1, raw: false, defval: '' });
+        procesarMatrizDatos(matrizFilas, archivo.name);
+      } catch (error) {
+        alert("Error al leer el archivo Excel.");
+      }
+    };
+    lector.readAsArrayBuffer(archivo);
+    inputExcel.value = '';
+  }
+
+  function procesarMatrizDatos(matrizFilas, nombreOrigen) {
+    const nuevasAudiencias = [];
+    let fechaDetectada = "";
+
+    matrizFilas.forEach((cols) => {
+      if (!cols || cols.length < 10) return;
+      const col0 = String(cols[0] || '').trim();
+
+      if (col0.toLowerCase().includes('tribunal') && cols[1]) {
+        nombreTribunal = String(cols[1]).trim().toUpperCase();
+        return;
+      }
+      if (col0.toLowerCase().includes('horario')) return;
+      if (!/^\d{1,2}:\d{2}/.test(col0)) return;
+
+      const hora = col0.substring(0, 5).padStart(5, '0');
+      const fechaCol = String(cols[2] || '').trim();
+      if (!fechaDetectada && fechaCol) fechaDetectada = fechaCol;
+
+      const ruc = String(cols[3] || '').trim();
+      const rit = String(cols[4] || '').trim();
+      let caratulado = String(cols[5] || '').trim();
+      const sala = String(cols[7] || 'PRIMERA SALA').trim();
+      const tipo = String(cols[9] || '').trim();
+      const rpaValor = String(cols[11] || '').trim().toUpperCase();
+
+      const esRPA = (rpaValor === 'SI' || rpaValor === 'SÍ');
+      if (esRPA) caratulado = 'Anonimizado RPA';
+
+      nuevasAudiencias.push({
+        id: nuevasAudiencias.length + 1,
+        hora, fecha: fechaCol, ruc, rit, caratulado, esRPA, sala, tipo, estado: 'programada'
+      });
+    });
+
+    if (nuevasAudiencias.length === 0) {
+      alert("No se encontraron audiencias válidas en el archivo.");
+      return;
+    }
+
+    const horaCarga = new Date().toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' });
+    archivoActualInfo = `${nombreOrigen} (${horaCarga})`;
+    fechaAgendaActual = fechaDetectada || "No especificada";
+
+    document.getElementById('info-archivo').textContent = archivoActualInfo;
+    document.getElementById('info-fecha-agenda').textContent = fechaAgendaActual;
+    verificarCoincidenciaFecha(fechaDetectada);
+
+    nuevasAudiencias.sort((a, b) => a.hora.localeCompare(b.hora));
+    nuevasAudiencias.forEach((a, idx) => a.id = idx + 1);
+
+    audiencias = nuevasAudiencias;
+    guardarEnFirebase();
+  }
+
+  function verificarCoincidenciaFecha(fechaAgendaStr) {
+    const alerta = document.getElementById('alerta-fecha-distinta');
+    if (!fechaAgendaStr || fechaAgendaStr === "--") { alerta.style.display = 'none'; return; }
+    const hoy = new Date();
+    const hoyStr = `${String(hoy.getDate()).padStart(2, '0')}/${String(hoy.getMonth() + 1).padStart(2, '0')}/${hoy.getFullYear()}`;
+    alerta.style.display = (fechaAgendaStr.replace(/-/g, '/') !== hoyStr) ? 'inline-block' : 'none';
+  }
+
+  async function guardarEnFirebase() {
+    renderizarTabla();
+    const payload = {
+      tribunal: nombreTribunal,
+      archivoOrigen: archivoActualInfo,
+      fechaAgenda: fechaAgendaActual,
+      actualizado: new Date().toISOString(),
+      mensaje: document.getElementById('input-cintillo').value,
+      audiencias: audiencias
+    };
+
+    try {
+      await set(refAgenda, payload);
+    } catch (err) {
+      console.error(err);
+      alert("Error al enviar los datos a la nube. Verifica tu conexión o permisos.");
+    }
+  }
+
+  window.cambiarEstado = function(id, nuevoEstado) {
+    const objetivo = audiencias.find(a => a.id === id);
+    if (!objetivo) return;
+
+    if (nuevoEstado === 'curso') {
+      audiencias.forEach(a => {
+        if (a.sala === objetivo.sala && a.estado === 'curso') a.estado = 'finalizada';
+      });
+    }
+    objetivo.estado = nuevoEstado;
+    guardarEnFirebase();
+  };
+
+  function renderizarTabla() {
+    const realizadas = audiencias.filter(a => a.estado === 'finalizada').length;
+    document.getElementById('contador-causas').textContent = audiencias.length;
+    document.getElementById('contador-realizadas').textContent = `${realizadas} realizadas`;
+
+    const tbody = document.getElementById('tabla-control');
+    tbody.innerHTML = audiencias.map(a => {
+      let claseFila = '';
+      let textoEstado = `<strong>${a.estado.toUpperCase()}</strong>`;
+
+      if (a.estado === 'curso') {
+        claseFila = 'fila-curso';
+        textoEstado = `<strong style="color:#047857;">● EN SALA</strong>`;
+      } else if (a.estado === 'finalizada') {
+        claseFila = 'fila-finalizada';
+        textoEstado = `<span class="badge-realizada">✔ REALIZADA</span>`;
+      }
+
+      return `
+        <tr class="${claseFila}">
+          <td><strong>${a.hora}</strong></td>
+          <td><strong>${a.rit}</strong><br><small style="color:#64748b">${a.ruc}</small></td>
+          <td>${a.esRPA ? '<span class="badge-rpa">Anonimizado RPA</span>' : a.caratulado}</td>
+          <td>${a.tipo}</td>
+          <td>${textoEstado}</td>
+          <td>
+            <button class="btn-green" onclick="cambiarEstado(${a.id}, 'curso')">▶ Llamar</button>
+            <button class="btn-gray" onclick="cambiarEstado(${a.id}, 'finalizada')">✔ Finalizar</button>
+            <button class="btn-amber" onclick="cambiarEstado(${a.id}, 'programada')">↺ Espera</button>
+          </td>
+        </tr>
+      `;
+    }).join('');
+  }
+</script>
+</body>
+</html>
